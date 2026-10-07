@@ -71,7 +71,10 @@ input[type=text], input[type=password], input[type=date], input[type=time], inpu
   border-radius: 10px; padding: 11px 12px; width: 100%; min-height: 46px; min-width: 0;
 }
 textarea { min-height: 80px; resize: vertical; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; }
+/* iOS Safari sizes date and time fields to their content unless told otherwise. */
+input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; max-width: 100%; text-align: left; display: block; }
+input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align: left; min-height: 1.3em; }
 fieldset { border: 0; padding: 0; margin: 26px 0 0; min-width: 0; }
 legend { font-weight: 600; padding: 0; margin: 0 0 8px; }
 .switch { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface);
