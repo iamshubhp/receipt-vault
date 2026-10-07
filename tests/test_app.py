@@ -168,3 +168,12 @@ def test_bad_input_rejected(client):
     assert client.post("/api/receipts", json=memo_receipt(client, sale_date="06/10/2026")).status_code == 422
     assert client.post("/api/receipts", json=memo_receipt(client, items=[])).status_code == 422
     assert client.post("/api/receipts", json=memo_receipt(client, receipt_no=" ")).status_code == 422
+
+
+def test_scan_reply_parsing():
+    from app.scan import ScanUnavailable, _extract
+    fields = {"receipt_no": "2950", "sale_date": "2026-10-06", "items": []}
+    assert _extract({"content": [{"type": "text", "text": "ok"}, {"type": "tool_use", "input": fields}]}) == fields
+    assert _extract({"content": [{"type": "text", "text": 'Here it is:\n```json\n{"receipt_no": "2950", "sale_date": "2026-10-06", "items": []}\n```'}]}) == fields
+    with pytest.raises(ScanUnavailable):
+        _extract({"content": [{"type": "text", "text": "I can't read this photo."}]})

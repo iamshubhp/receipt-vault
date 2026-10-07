@@ -1,6 +1,7 @@
 """Read a receipt photo with the Anthropic API and return structured fields."""
 import base64
 import io
+import json
 import os
 
 import httpx
@@ -81,7 +82,8 @@ def _tool(brand_names: list[str]) -> dict:
 
 
 PROMPT = """This is a photo of a paper receipt from a duty free shop at Toronto Pearson airport.
-Read it and call record_receipt with what is printed.
+Read it and call the record_receipt tool exactly once with what is printed. Reply only with that
+tool call, no other text.
 
 Rules:
 - Copy values exactly as printed. If something is blurry, cut off or missing, leave it empty and
@@ -109,7 +111,8 @@ def scan(image_jpeg: bytes, brands: list[dict]) -> dict:
         "model": os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5-5"),
         "max_tokens": 2000,
         "tools": [_tool(names)],
-        "tool_choice": {"type": "tool", "name": "record_receipt"},
+        # Newer models reject a forced tool, so the prompt asks for the call instead.
+        "tool_choice": {"type": "auto"},
         "messages": [{
             "role": "user",
             "content": [
@@ -133,7 +136,22 @@ def scan(image_jpeg: bytes, brands: list[dict]) -> dict:
         except Exception:
             detail = ""
         raise ScanUnavailable(f"The photo reader returned an error ({resp.status_code}). {detail}".strip())
-    for block in resp.json().get("content", []):
-        if block.get("type") == "tool_use":
-            return block.get("input", {})
+    return _extract(resp.json())
+
+
+def _extract(payload: dict) -> dict:
+    """Pull the receipt fields out of the API reply: the tool call, or JSON written as text."""
+    blocks = payload.get("content", [])
+    for block in blocks:
+        if block.get("type") == "tool_use" and isinstance(block.get("input"), dict):
+            return block["input"]
+    text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            data = json.loads(text[start:end + 1])
+            if isinstance(data, dict) and "items" in data:
+                return data
+        except ValueError:
+            pass
     raise ScanUnavailable("The photo reader didn't return any receipt details. Try a clearer photo.")
