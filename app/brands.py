@@ -28,7 +28,13 @@ SEED_BRANDS = [
     {"name": "Balmain", "aliases": ["balmain"]},
     {"name": "Brunello Cucinelli", "aliases": ["cucinelli", "brunello"]},
     {"name": "Chloé Atelier des Fleurs", "aliases": ["chloe"], "requires": ["atelier", "fleurs"]},
+    {"name": "Amouage", "aliases": ["amouage"]},
 ]
+
+# Brands added after the app was already in use. db.init() inserts each one once
+# into an existing database (a settings flag stops it coming back if renamed or
+# deactivated later).
+LATER_BRANDS = ["Amouage"]
 
 
 def normalize(text: str) -> str:

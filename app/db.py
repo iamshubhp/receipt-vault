@@ -4,7 +4,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-from .brands import SEED_BRANDS
+from .brands import LATER_BRANDS, SEED_BRANDS
 
 
 def data_dir() -> Path:
@@ -103,6 +103,15 @@ def init() -> None:
                 "INSERT INTO brands (name, aliases, requires) VALUES (?, ?, ?)",
                 [(b["name"], json.dumps(b["aliases"]), json.dumps(b.get("requires", []))) for b in SEED_BRANDS],
             )
+        seed_by_name = {b["name"]: b for b in SEED_BRANDS}
+        for name in LATER_BRANDS:
+            flag = f"seeded_brand:{name}"
+            if conn.execute("SELECT 1 FROM settings WHERE key = ?", (flag,)).fetchone():
+                continue
+            b = seed_by_name[name]
+            conn.execute("INSERT OR IGNORE INTO brands (name, aliases, requires) VALUES (?, ?, ?)",
+                         (b["name"], json.dumps(b["aliases"]), json.dumps(b.get("requires", []))))
+            conn.execute("INSERT INTO settings (key, value) VALUES (?, '1')", (flag,))
         for k, v in DEFAULT_SETTINGS.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
         conn.commit()

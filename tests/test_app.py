@@ -50,8 +50,34 @@ def test_login_required():
     assert c.post("/api/login", json={"password": "nope"}).status_code == 401
 
 
-def test_all_19_brands_seeded(client):
-    assert len(client.get("/api/brands").json()) == 19
+def test_all_20_brands_seeded(client):
+    assert len(client.get("/api/brands").json()) == 20
+
+
+def test_amouage_added_once_to_existing_database(tmp_path, monkeypatch):
+    import json, sqlite3
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    db.init()
+    conn = db.connect()
+    # Simulate a database created before Amouage existed.
+    conn.execute("DELETE FROM brands WHERE name = 'Amouage'")
+    conn.execute("DELETE FROM settings WHERE key = 'seeded_brand:Amouage'")
+    conn.commit(); conn.close()
+    db.init()
+    conn = db.connect()
+    assert conn.execute("SELECT COUNT(*) FROM brands WHERE name = 'Amouage'").fetchone()[0] == 1
+    # Renamed or removed later: it must not come back on the next restart.
+    conn.execute("UPDATE brands SET name = 'Amouage (old)' WHERE name = 'Amouage'")
+    conn.commit(); conn.close()
+    db.init()
+    conn = db.connect()
+    assert conn.execute("SELECT COUNT(*) FROM brands WHERE name = 'Amouage'").fetchone()[0] == 0
+    conn.close()
+
+
+def test_amouage_earns_commission(client):
+    brand, line_ok = match_brand("AMOUAGE REFLECTION MAN EDP 100ML", client.get("/api/brands").json())
+    assert brand["name"] == "Amouage" and line_ok
 
 
 def test_memo_receipt_roundtrip_and_commission(client):
