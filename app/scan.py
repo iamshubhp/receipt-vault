@@ -95,6 +95,7 @@ Rules:
 - Prices are in CAD and there is no tax. If a discount is printed, list_price is the price before it
   and paid_price is the price after it.
 - Never return any part of a card number.
+- "MM" at the start of a description means Maison Margiela (e.g. "MM UNDER THE STARS 100ML EDT").
 - commission_brand must be one of these exact names, or null. Several entries cover only one
   specific line of a brand, so use them only when the product is from that line:
 {brands}

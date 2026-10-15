@@ -75,6 +75,30 @@ def test_amouage_added_once_to_existing_database(tmp_path, monkeypatch):
     conn.close()
 
 
+def test_margiela_update_applied_to_existing_database(tmp_path, monkeypatch):
+    import json
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    db.init()
+    conn = db.connect()
+    # Simulate the live database: old aliases, "replica" line rule, update not yet applied.
+    conn.execute("UPDATE brands SET aliases = ?, requires = ? WHERE name = 'Maison Margiela Replica'",
+                 (json.dumps(["margiela", "replica", "mmm"]), json.dumps(["replica"])))
+    conn.execute("DELETE FROM settings WHERE key = 'brand_update:mm_receipt_name'")
+    conn.commit(); conn.close()
+    db.init()
+    conn = db.connect()
+    b = next(b for b in db.brand_rows(conn) if b["name"] == "Maison Margiela Replica")
+    assert "mm" in b["aliases"] and b["requires"] == []
+    assert match_brand("MM UNDER THE STARS 100ML EDT", db.brand_rows(conn)) == (b, True)
+    # Edited in the app afterwards: a restart must not undo it.
+    conn.execute("UPDATE brands SET requires = ? WHERE id = ?", (json.dumps(["replica"]), b["id"]))
+    conn.commit(); conn.close()
+    db.init()
+    conn = db.connect()
+    assert next(x for x in db.brand_rows(conn) if x["id"] == b["id"])["requires"] == ["replica"]
+    conn.close()
+
+
 def test_amouage_earns_commission(client):
     brand, line_ok = match_brand("AMOUAGE REFLECTION MAN EDP 100ML", client.get("/api/brands").json())
     assert brand["name"] == "Amouage" and line_ok
@@ -137,6 +161,8 @@ def test_brand_rules():
     assert name("BOSS BOTTLED EDT 100ML") == ("Hugo Boss Private Line", False)
     assert name("VERSACE EROS EDT") == ("Versace Atelier Collection", False)
     assert name("REPLICA JAZZ CLUB 100ML") == ("Maison Margiela Replica", True)
+    assert name("MM Under The Stars 100ml EDT") == ("Maison Margiela Replica", True)   # receipt of 15 Oct 2026
+    assert name("100ML EDT") == (None, False)                 # "ml" in sizes is not "mm"
     assert name("CHANEL NO 5") == (None, False)
     assert name("MEMORY FOAM PILLOW") == (None, False)       # "memo" must be a whole word
     partial = classify(conn, brands, "VERSACE EROS EDT")

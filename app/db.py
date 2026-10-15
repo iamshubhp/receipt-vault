@@ -4,7 +4,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-from .brands import LATER_BRANDS, SEED_BRANDS
+from .brands import BRAND_UPDATES, LATER_BRANDS, SEED_BRANDS
 
 
 def data_dir() -> Path:
@@ -111,6 +111,20 @@ def init() -> None:
             b = seed_by_name[name]
             conn.execute("INSERT OR IGNORE INTO brands (name, aliases, requires) VALUES (?, ?, ?)",
                          (b["name"], json.dumps(b["aliases"]), json.dumps(b.get("requires", []))))
+            conn.execute("INSERT INTO settings (key, value) VALUES (?, '1')", (flag,))
+        for u in BRAND_UPDATES:
+            flag = f"brand_update:{u['key']}"
+            if conn.execute("SELECT 1 FROM settings WHERE key = ?", (flag,)).fetchone():
+                continue
+            row = conn.execute("SELECT id, aliases, requires FROM brands WHERE name = ?", (u["name"],)).fetchone()
+            if row:
+                aliases = json.loads(row["aliases"])
+                aliases += [a for a in u.get("add_aliases", []) if a not in aliases]
+                requires = json.loads(row["requires"])
+                if "clear_requires_if" in u and requires == u["clear_requires_if"]:
+                    requires = []
+                conn.execute("UPDATE brands SET aliases = ?, requires = ? WHERE id = ?",
+                             (json.dumps(aliases), json.dumps(requires), row["id"]))
             conn.execute("INSERT INTO settings (key, value) VALUES (?, '1')", (flag,))
         for k, v in DEFAULT_SETTINGS.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))

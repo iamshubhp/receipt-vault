@@ -17,7 +17,8 @@ SEED_BRANDS = [
     {"name": "Initio", "aliases": ["initio"]},
     {"name": "Loewe", "aliases": ["loewe"]},
     {"name": "Bvlgari", "aliases": ["bvlgari", "bulgari", "bvl"]},
-    {"name": "Maison Margiela Replica", "aliases": ["margiela", "replica", "mmm"], "requires": ["replica"]},
+    # Receipts print it as "MM UNDER THE STARS 100ML EDT": no "Replica" on the line, so no line rule.
+    {"name": "Maison Margiela Replica", "aliases": ["margiela", "maison margiela", "replica", "mmm", "mm"]},
     {"name": "Dolce & Gabbana Velvet Collection", "aliases": ["dolce", "gabbana", "d&g", "dg"], "requires": ["velvet"]},
     {"name": "Hugo Boss Private Line", "aliases": ["boss", "hugo boss"], "requires": ["collection", "private"]},
     {"name": "Versace Atelier Collection", "aliases": ["versace"], "requires": ["atelier"]},
@@ -35,6 +36,14 @@ SEED_BRANDS = [
 # into an existing database (a settings flag stops it coming back if renamed or
 # deactivated later).
 LATER_BRANDS = ["Amouage"]
+
+# Changes to brands already in a live database, applied once each (settings flag).
+# add_aliases: words merged into the brand's list. clear_requires_if: the line rule is
+# removed only if it still has exactly this value, so a rule edited in the app is kept.
+BRAND_UPDATES = [
+    {"key": "mm_receipt_name", "name": "Maison Margiela Replica",
+     "add_aliases": ["maison margiela", "mm"], "clear_requires_if": ["replica"]},
+]
 
 
 def normalize(text: str) -> str:
